@@ -2,10 +2,15 @@ import { autorun, observable, runInAction } from 'mobx';
 import type * as monaco from 'monaco-editor';
 import { useEffect, useRef } from 'react';
 import type { Facet } from '@core/features/editor/api/browser/open-file-store/facet-handle';
+import { useAppSettingsKey } from '@core/features/settings/api/browser/use-app-settings-key';
 import {
   openFileStore,
   type OpenFileEntry,
 } from '@core/features/editor/api/browser/open-file-store/open-file-store';
+import {
+  type EditorFontDefaults,
+  updateDiffEditorFontOptions,
+} from '@core/features/editor/browser/monaco/editor-font-settings';
 import { DIFF_EDITOR_BASE_OPTIONS } from '@core/features/editor/browser/monaco/editorConfig';
 import { installMonacoFacetBinder } from '@core/features/editor/browser/monaco/install-monaco-facet-binder';
 import { monacoBootstrap } from '@core/features/editor/browser/monaco/monaco-bootstrap';
@@ -132,6 +137,8 @@ export function StickyDiffEditor({
   onEditorChangeRef.current = onEditorChange;
 
   const { effectiveTheme } = useTheme();
+  const { value: editorSettings } = useAppSettingsKey('editor');
+  const editorFontDefaultsRef = useRef<EditorFontDefaults | null>(null);
 
   // Create editor once on mount, dispose on unmount.
   // Monaco is guaranteed ready because monacoBootstrap.init() is awaited in main.tsx.
@@ -147,6 +154,10 @@ export function StickyDiffEditor({
     onEditorChangeRef.current?.(editor);
 
     const modifiedEditor = editor.getModifiedEditor();
+    editorFontDefaultsRef.current = {
+      fontFamily: modifiedEditor.getOption(m.editor.EditorOption.fontFamily),
+      lineHeight: modifiedEditor.getOption(m.editor.EditorOption.lineHeight),
+    };
     modifiedEditor.addCommand(m.KeyMod.CtrlCmd | m.KeyCode.KeyS, () => {
       const side = modifiedRef.current;
       if (side?.kind !== 'facet' || side.facet.kind !== 'buffer') return;
@@ -175,6 +186,7 @@ export function StickyDiffEditor({
       }
       runInAction(() => editorBox.set(null));
       editor.dispose();
+      editorFontDefaultsRef.current = null;
       emptyModels.original?.dispose();
       emptyModels.modified?.dispose();
       emptyModels.original = null;
@@ -182,6 +194,13 @@ export function StickyDiffEditor({
     };
     // oxlint-disable-next-line react/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const editor = editorBox.get();
+    const defaults = editorFontDefaultsRef.current;
+    if (!editor || !defaults) return;
+    updateDiffEditorFontOptions(editor, editorSettings, defaults);
+  }, [editorBox, editorSettings]);
 
   // Sync diffStyle changes to the mounted editor.
   useEffect(() => {
