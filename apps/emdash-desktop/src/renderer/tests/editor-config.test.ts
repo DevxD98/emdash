@@ -5,7 +5,11 @@ import {
   updateDiffEditorFontOptions,
 } from '@core/features/editor/browser/monaco/editor-font-settings';
 import { DIFF_EDITOR_BASE_OPTIONS } from '@core/features/editor/browser/monaco/editorConfig';
-import { EDITOR_FONT_SIZE_DEFAULT } from '@core/primitives/app-settings/api';
+import {
+  EDITOR_FONT_SIZE_DEFAULT,
+  EDITOR_FONT_SIZE_MAX,
+  EDITOR_FONT_SIZE_MIN,
+} from '@core/primitives/app-settings/api';
 
 describe('DIFF_EDITOR_BASE_OPTIONS', () => {
   it('keeps unchanged diff regions visible for large text selection', () => {
@@ -43,12 +47,23 @@ describe('editor font options', () => {
     );
 
     expect(target.updateOptions).toHaveBeenCalledWith({
-      fontFamily: 'JetBrains Mono',
+      fontFamily: `"JetBrains Mono", "Menlo", "Monaco", 'Courier New', monospace`,
       fontSize: 16,
     });
   });
 
-  it('updates an open diff editor and lets Monaco scale custom line heights', () => {
+  it('quotes custom family names and keeps the Monaco stack as a fallback', () => {
+    expect(
+      buildEditorFontOptions({ fontFamily: '3270 Nerd Font', fontSize: 13 }, monacoDefaults)
+        .fontFamily
+    ).toBe(`"3270 Nerd Font", "Menlo", "Monaco", 'Courier New', monospace`);
+    expect(
+      buildEditorFontOptions({ fontFamily: 'SF Mono, monospace', fontSize: 13 }, monacoDefaults)
+        .fontFamily
+    ).toBe(`"SF Mono", monospace, "Menlo", "Monaco", 'Courier New'`);
+  });
+
+  it('updates an open diff editor and scales its line height with the font size', () => {
     const target = { updateOptions: vi.fn() };
 
     updateDiffEditorFontOptions(
@@ -58,10 +73,21 @@ describe('editor font options', () => {
     );
 
     expect(target.updateOptions).toHaveBeenCalledWith({
-      fontFamily: 'Fira Code',
+      fontFamily: `"Fira Code", "Menlo", "Monaco", 'Courier New', monospace`,
       fontSize: 18,
-      lineHeight: 0,
+      lineHeight: 28,
     });
+  });
+
+  it('never shrinks diff line height when the font size grows', () => {
+    const diffDefaults = { ...monacoDefaults, lineHeight: 20 };
+    let previous = 0;
+    for (let fontSize = EDITOR_FONT_SIZE_MIN; fontSize <= EDITOR_FONT_SIZE_MAX; fontSize++) {
+      const { lineHeight = 0 } = buildEditorFontOptions({ fontSize }, diffDefaults);
+      expect(lineHeight).toBeGreaterThan(previous);
+      expect(lineHeight).toBeGreaterThanOrEqual(Math.ceil(fontSize * 1.5));
+      previous = lineHeight;
+    }
   });
 
   it('restores the captured Monaco family and diff spacing at the default size', () => {

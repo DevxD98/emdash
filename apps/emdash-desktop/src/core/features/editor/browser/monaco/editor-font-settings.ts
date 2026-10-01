@@ -1,8 +1,9 @@
 import type { editor } from 'monaco-editor';
 import {
-  EDITOR_FONT_SIZE_DEFAULT,
-  type EditorSettings,
-} from '@core/primitives/app-settings/api';
+  buildFontFamilyStack,
+  splitFontFamilies,
+} from '@core/features/terminals/api/browser/pty/terminal-font';
+import { EDITOR_FONT_SIZE_DEFAULT, type EditorSettings } from '@core/primitives/app-settings/api';
 
 export type EditorFontDefaults = {
   fontFamily: string;
@@ -22,14 +23,18 @@ export function buildEditorFontOptions(
   const fontSize = settings?.fontSize ?? EDITOR_FONT_SIZE_DEFAULT;
   const configuredFontFamily = settings?.fontFamily?.trim();
   const options: EditorFontOptions = {
-    fontFamily: configuredFontFamily || defaults.fontFamily,
+    // Quote custom names (e.g. "3270 Nerd Font") and fall back to Monaco's own
+    // stack so a missing font never drops to a proportional browser default.
+    fontFamily: configuredFontFamily
+      ? buildFontFamilyStack(configuredFontFamily, splitFontFamilies(defaults.fontFamily))
+      : defaults.fontFamily,
     fontSize,
   };
 
   if (defaults.lineHeight !== undefined) {
-    // Keep the existing diff spacing at the default size. Let Monaco derive an
-    // appropriate line height for custom sizes so larger fonts are not clipped.
-    options.lineHeight = fontSize === EDITOR_FONT_SIZE_DEFAULT ? defaults.lineHeight : 0;
+    // Scale the fixed diff line height with the font size so the default size
+    // keeps its existing spacing and larger sizes are never clipped.
+    options.lineHeight = Math.round((defaults.lineHeight * fontSize) / EDITOR_FONT_SIZE_DEFAULT);
   }
 
   return options;

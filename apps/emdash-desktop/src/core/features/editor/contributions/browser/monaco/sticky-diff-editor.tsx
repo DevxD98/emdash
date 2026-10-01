@@ -2,7 +2,6 @@ import { autorun, observable, runInAction } from 'mobx';
 import type * as monaco from 'monaco-editor';
 import { useEffect, useRef } from 'react';
 import type { Facet } from '@core/features/editor/api/browser/open-file-store/facet-handle';
-import { useAppSettingsKey } from '@core/features/settings/api/browser/use-app-settings-key';
 import {
   openFileStore,
   type OpenFileEntry,
@@ -14,6 +13,7 @@ import {
 import { DIFF_EDITOR_BASE_OPTIONS } from '@core/features/editor/browser/monaco/editorConfig';
 import { installMonacoFacetBinder } from '@core/features/editor/browser/monaco/install-monaco-facet-binder';
 import { monacoBootstrap } from '@core/features/editor/browser/monaco/monaco-bootstrap';
+import { useAppSettingsKey } from '@core/features/settings/api/browser/use-app-settings-key';
 import { openModal } from '@core/manifests/browser/modal-api';
 import { useTheme } from '@core/primitives/theme/browser';
 

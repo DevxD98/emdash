@@ -159,9 +159,7 @@ export function FontFamilySettingRow({
                         <Combobox.Item key={item.value || '__default__'} value={item}>
                           <span
                             style={{
-                              fontFamily: item.value
-                                ? `"${item.value}"`
-                                : defaultPreviewFontFamily,
+                              fontFamily: item.value ? `"${item.value}"` : defaultPreviewFontFamily,
                             }}
                           >
                             {item.label}
